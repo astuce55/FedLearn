@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package federated;
+
+// =========================================================
+// SERVICE PRINCIPAL : ce que le serveur expose aux clients
+// (RPC - Remote Procedure Call, chapitre 4)
+// =========================================================
+service FederatedLearningService {
+
+  // Un client s'enregistre auprès du serveur (lui obtient un nom plat + adresse)
+  rpc RegisterClient(RegisterRequest) returns (RegisterResponse);
+
+  // Le serveur envoie le modèle global courant à un client
+  rpc GetGlobalModel(ModelRequest) returns (ModelResponse);
+
+  // Le client envoie ses poids locaux entraînés (mise à jour FedAvg)
+  rpc SendLocalUpdate(LocalUpdate) returns (UpdateAck);
+
+  // Heartbeat : pour la tolérance aux pannes (détection de panne via timeout)
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+
+  // Élection de leader (Bully) : un client annonce sa candidature
+  rpc ElectionMessage(ElectionRequest) returns (ElectionResponse);
+}
+
+// =========================================================
+// MESSAGES (structures de données échangées)
+// =========================================================
+
+message RegisterRequest {
+  string client_name = 1;        // nommage plat (ex: "client-7f3a")
+  string ip_address = 2;
+  int32 port = 3;
+  int32 dataset_size = 4;        // n_k, utilisé pour FedAvg
+  map<string, string> attributes = 5; // nommage par attributs (ex: "region": "yaounde")
+}
+
+message RegisterResponse {
+  bool success = 1;
+  string assigned_id = 2;
+  string structured_name = 3;    // nommage structuré (ex: "/fl/cluster1/client-7f3a")
+  int64 lamport_timestamp = 4;   // horloge de Lamport (chapitre 5)
+}
+
+message ModelRequest {
+  string client_id = 1;
+  int64 lamport_timestamp = 2;
+}
+
+message ModelResponse {
+  repeated float weights = 1;    // poids du modèle global (sérialisés à plat)
+  int32 round_number = 2;
+  int64 lamport_timestamp = 3;
+}
+
+message LocalUpdate {
+  string client_id = 1;
+  repeated float weights = 2;    // poids locaux après entraînement
+  int32 dataset_size = 3;        // n_k
+  int32 round_number = 4;
+  int64 lamport_timestamp = 5;
+}
+
+message UpdateAck {
+  bool received = 1;
+  int64 lamport_timestamp = 2;
+}
+
+message HeartbeatRequest {
+  string sender_id = 1;
+  int64 lamport_timestamp = 2;
+}
+
+message HeartbeatResponse {
+  bool alive = 1;
+  int64 lamport_timestamp = 2;
+}
+
+message ElectionRequest {
+  string candidate_id = 1;       // identifiant utilisé pour comparer (ex: ID numérique)
+  int64 lamport_timestamp = 2;
+}
+
+message ElectionResponse {
+  bool accepted = 1;             // true si le candidat est accepté comme leader
+  int64 lamport_timestamp = 2;
+}
