@@ -1,17 +1,14 @@
 """
-server.py — Serveur central. Version réseau réel.
-Ecoute sur 0.0.0.0 pour accepter les connexions de n'importe quelle machine du réseau.
+server.py — Étape 3 : avec horloges de Lamport.
 """
-import grpc
-import uuid
-import logging
-import socket
+import grpc, socket, logging
 from concurrent import futures
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from common import federated_pb2
-from common import federated_pb2_grpc
+from common import federated_pb2, federated_pb2_grpc
+from common.naming import AnnuaireUnifie
+from common.lamport_clock import HorlogeLamport, JournalEvenements
 
 logging.basicConfig(level=logging.INFO, format="[SERVEUR %(asctime)s] %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger(__name__)
@@ -20,94 +17,90 @@ log = logging.getLogger(__name__)
 class FederatedServer(federated_pb2_grpc.FederatedLearningServiceServicer):
 
     def __init__(self):
-        self.registry = {}
-        log.info("Serveur pret. En attente de clients...")
+        self.annuaire = AnnuaireUnifie()
+        self.horloge  = HorlogeLamport("serveur")   # ← horloge du serveur
+        self.journal  = JournalEvenements()
+        log.info("Serveur initialisé. LC=%d", self.horloge.valeur)
 
     def RegisterClient(self, request, context):
-        client_id = str(uuid.uuid4())[:8]
-        region = request.attributes.get("region", "default")
-        structured_name = f"/fl/{region}/client-{client_id}"
+        # Règle 3 : réception du message du client
+        lc = self.horloge.apres_reception(request.lamport_timestamp)
+        self.journal.enregistrer(lc, "serveur", "RegisterClient reçu", request.client_name)
 
-        # Récupérer l'IP réelle du client depuis le contexte gRPC
-        # (ce que context.peer() retourne : "ipv4:192.168.1.x:PORT")
-        peer = context.peer()  # ex: "ipv4:192.168.1.5:54321"
-        ip_client = peer.split(":")[1] if ":" in peer else request.ip_address
+        peer = context.peer()
+        ip_client = peer.split(":")[1] if "ipv4:" in peer else request.ip_address
+        attrs_sup = {k: v for k, v in request.attributes.items() if k != "region"}
 
-        cpu = request.attributes.get("cpu_threads", "?")
-        ram = request.attributes.get("ram_fraction", "?")
-
-        self.registry[client_id] = {
-            "name": request.client_name,
-            "ip_reel": ip_client,
-            "ip_declare": request.ip_address,
-            "dataset_size": request.dataset_size,
-            "attributes": dict(request.attributes),
-            "structured_name": structured_name,
-        }
-
-        log.info(
-            "NOUVEAU CLIENT !\n"
-            "  Nom         : %s\n"
-            "  IP reelle   : %s\n"
-            "  ID attribue : %s\n"
-            "  Chemin      : %s\n"
-            "  Dataset     : %d exemples\n"
-            "  Ressources  : %s threads CPU, %.0f%% RAM\n"
-            "  Total reseau: %d clients connectes",
-            request.client_name, ip_client, client_id, structured_name,
-            request.dataset_size, cpu,
-            float(ram) * 100 if ram != "?" else 0,
-            len(self.registry)
+        resultat = self.annuaire.enregistrer_client(
+            nom=request.client_name, ip=ip_client, port=request.port,
+            region=request.attributes.get("region", "default"),
+            dataset_size=request.dataset_size,
+            attrs_supplementaires=attrs_sup,
         )
+
+        # Règle 2 : envoi de la réponse
+        lc_reponse = self.horloge.avant_envoi()
+        self.journal.enregistrer(lc_reponse, "serveur", "RegisterResponse envoyé", resultat["client_id"])
+
+        log.info("Client enregistré | %s | id=%s | LC=%d",
+                 request.client_name, resultat["client_id"], lc_reponse)
 
         return federated_pb2.RegisterResponse(
             success=True,
-            assigned_id=client_id,
-            structured_name=structured_name,
-            lamport_timestamp=0,
+            assigned_id=resultat["client_id"],
+            structured_name=resultat["chemin"],
+            lamport_timestamp=lc_reponse,      # ← le client synchronisera son horloge
         )
 
     def GetGlobalModel(self, request, context):
-        return federated_pb2.ModelResponse(weights=[0.0]*10, round_number=0, lamport_timestamp=0)
+        # Règle 3 : réception de la demande
+        lc = self.horloge.apres_reception(request.lamport_timestamp)
+        self.journal.enregistrer(lc, "serveur", "GetGlobalModel reçu", request.client_id)
+
+        # Règle 2 : envoi du modèle
+        lc_envoi = self.horloge.avant_envoi()
+        self.journal.enregistrer(lc_envoi, "serveur", "Modèle global envoyé", f"LC={lc_envoi}")
+
+        return federated_pb2.ModelResponse(
+            weights=[0.0]*10, round_number=0,
+            lamport_timestamp=lc_envoi,
+        )
 
     def SendLocalUpdate(self, request, context):
-        nom = self.registry.get(request.client_id, {}).get("name", "?")
-        log.info("Mise a jour recue de %s (round %d)", nom, request.round_number)
-        return federated_pb2.UpdateAck(received=True, lamport_timestamp=0)
+        # Règle 3 : réception de la mise à jour
+        lc = self.horloge.apres_reception(request.lamport_timestamp)
+        info = self.annuaire.get_client(request.client_id)
+        nom = info["name"] if info else "?"
+        self.journal.enregistrer(lc, "serveur", "Update reçue", f"{nom} round={request.round_number}")
+
+        log.info("Update reçue de %s | round=%d | LC=%d", nom, request.round_number, lc)
+
+        lc_ack = self.horloge.avant_envoi()
+        return federated_pb2.UpdateAck(received=True, lamport_timestamp=lc_ack)
 
     def Heartbeat(self, request, context):
-        return federated_pb2.HeartbeatResponse(alive=True, lamport_timestamp=0)
+        lc = self.horloge.apres_reception(request.lamport_timestamp)
+        lc_rep = self.horloge.avant_envoi()
+        return federated_pb2.HeartbeatResponse(alive=True, lamport_timestamp=lc_rep)
 
     def ElectionMessage(self, request, context):
-        return federated_pb2.ElectionResponse(accepted=True, lamport_timestamp=0)
+        lc = self.horloge.apres_reception(request.lamport_timestamp)
+        lc_rep = self.horloge.avant_envoi()
+        return federated_pb2.ElectionResponse(accepted=True, lamport_timestamp=lc_rep)
 
 
 def demarrer_serveur(port=50051):
-    # Afficher l'IP locale pour la communiquer aux camarades
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip_locale = s.getsockname()[0]
-        s.close()
+        s.connect(("8.8.8.8", 80)); ip_locale = s.getsockname()[0]; s.close()
     except Exception:
         ip_locale = "127.0.0.1"
 
     serveur = grpc.server(futures.ThreadPoolExecutor(max_workers=20))
     federated_pb2_grpc.add_FederatedLearningServiceServicer_to_server(FederatedServer(), serveur)
-
-    # 0.0.0.0 = écouter sur TOUTES les interfaces réseau (WiFi, Ethernet, etc.)
-    # Indispensable pour que les camarades se connectent depuis leurs machines
     serveur.add_insecure_port(f"0.0.0.0:{port}")
     serveur.start()
-
-    print("\n" + "="*55)
-    print("  Serveur d'apprentissage federe demarre !")
-    print("="*55)
-    print(f"  Communique cette adresse a tes camarades :")
-    print(f"  >>> {ip_locale}:{port} <<<")
-    print("="*55)
-    print("  En attente de connexions...\n")
-
+    print(f"\n{'='*50}\n  Serveur démarré — {ip_locale}:{port}\n{'='*50}\n")
     serveur.wait_for_termination()
 
 
