@@ -1,9 +1,11 @@
 """
-server.py — Serveur central du système d'apprentissage fédéré.
+server.py — Serveur central. Version réseau réel.
+Ecoute sur 0.0.0.0 pour accepter les connexions de n'importe quelle machine du réseau.
 """
 import grpc
 import uuid
 import logging
+import socket
 from concurrent import futures
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -16,34 +18,47 @@ log = logging.getLogger(__name__)
 
 
 class FederatedServer(federated_pb2_grpc.FederatedLearningServiceServicer):
-    """
-    Squelette (skeleton) du serveur.
-    Hérite de FederatedLearningServiceServicer généré par grpc_tools.protoc.
-    """
 
     def __init__(self):
-        self.registry = {}   # client_id → infos
-        log.info("Serveur initialisé. Registre vide.")
+        self.registry = {}
+        log.info("Serveur pret. En attente de clients...")
 
     def RegisterClient(self, request, context):
-        # Nommage PLAT : UUID court
         client_id = str(uuid.uuid4())[:8]
-
-        # Nommage STRUCTURÉ : chemin hiérarchique
         region = request.attributes.get("region", "default")
         structured_name = f"/fl/{region}/client-{client_id}"
 
-        # Stockage dans le registre (nommage par ATTRIBUTS inclus)
+        # Récupérer l'IP réelle du client depuis le contexte gRPC
+        # (ce que context.peer() retourne : "ipv4:192.168.1.x:PORT")
+        peer = context.peer()  # ex: "ipv4:192.168.1.5:54321"
+        ip_client = peer.split(":")[1] if ":" in peer else request.ip_address
+
+        cpu = request.attributes.get("cpu_threads", "?")
+        ram = request.attributes.get("ram_fraction", "?")
+
         self.registry[client_id] = {
             "name": request.client_name,
-            "ip": request.ip_address,
+            "ip_reel": ip_client,
+            "ip_declare": request.ip_address,
             "dataset_size": request.dataset_size,
             "attributes": dict(request.attributes),
             "structured_name": structured_name,
         }
 
-        log.info("Client enregistré | id=%s | chemin=%s | dataset=%d | total=%d",
-                 client_id, structured_name, request.dataset_size, len(self.registry))
+        log.info(
+            "NOUVEAU CLIENT !\n"
+            "  Nom         : %s\n"
+            "  IP reelle   : %s\n"
+            "  ID attribue : %s\n"
+            "  Chemin      : %s\n"
+            "  Dataset     : %d exemples\n"
+            "  Ressources  : %s threads CPU, %.0f%% RAM\n"
+            "  Total reseau: %d clients connectes",
+            request.client_name, ip_client, client_id, structured_name,
+            request.dataset_size, cpu,
+            float(ram) * 100 if ram != "?" else 0,
+            len(self.registry)
+        )
 
         return federated_pb2.RegisterResponse(
             success=True,
@@ -53,11 +68,11 @@ class FederatedServer(federated_pb2_grpc.FederatedLearningServiceServicer):
         )
 
     def GetGlobalModel(self, request, context):
-        log.info("GetGlobalModel demandé par %s", request.client_id)
         return federated_pb2.ModelResponse(weights=[0.0]*10, round_number=0, lamport_timestamp=0)
 
     def SendLocalUpdate(self, request, context):
-        log.info("Update reçue de %s (round %d)", request.client_id, request.round_number)
+        nom = self.registry.get(request.client_id, {}).get("name", "?")
+        log.info("Mise a jour recue de %s (round %d)", nom, request.round_number)
         return federated_pb2.UpdateAck(received=True, lamport_timestamp=0)
 
     def Heartbeat(self, request, context):
@@ -68,11 +83,31 @@ class FederatedServer(federated_pb2_grpc.FederatedLearningServiceServicer):
 
 
 def demarrer_serveur(port=50051):
-    serveur = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    # Afficher l'IP locale pour la communiquer aux camarades
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip_locale = s.getsockname()[0]
+        s.close()
+    except Exception:
+        ip_locale = "127.0.0.1"
+
+    serveur = grpc.server(futures.ThreadPoolExecutor(max_workers=20))
     federated_pb2_grpc.add_FederatedLearningServiceServicer_to_server(FederatedServer(), serveur)
-    serveur.add_insecure_port(f"[::]:{port}")
+
+    # 0.0.0.0 = écouter sur TOUTES les interfaces réseau (WiFi, Ethernet, etc.)
+    # Indispensable pour que les camarades se connectent depuis leurs machines
+    serveur.add_insecure_port(f"0.0.0.0:{port}")
     serveur.start()
-    log.info("Serveur démarré sur le port %d. En attente de clients...", port)
+
+    print("\n" + "="*55)
+    print("  Serveur d'apprentissage federe demarre !")
+    print("="*55)
+    print(f"  Communique cette adresse a tes camarades :")
+    print(f"  >>> {ip_locale}:{port} <<<")
+    print("="*55)
+    print("  En attente de connexions...\n")
+
     serveur.wait_for_termination()
 
 
