@@ -26,11 +26,7 @@ if _version_not_supported:
 
 
 class FederatedLearningServiceStub:
-    """=========================================================
-    SERVICE PRINCIPAL : ce que le serveur expose aux clients
-    (RPC - Remote Procedure Call, chapitre 4)
-    =========================================================
-    """
+    """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
         """Constructor.
@@ -63,46 +59,70 @@ class FederatedLearningServiceStub:
                 request_serializer=federated__pb2.ElectionRequest.SerializeToString,
                 response_deserializer=federated__pb2.ElectionResponse.FromString,
                 _registered_method=True)
+        self.StartRound = channel.unary_unary(
+                '/federated.FederatedLearningService/StartRound',
+                request_serializer=federated__pb2.StartRoundRequest.SerializeToString,
+                response_deserializer=federated__pb2.StartRoundResponse.FromString,
+                _registered_method=True)
+        self.GetStatus = channel.unary_unary(
+                '/federated.FederatedLearningService/GetStatus',
+                request_serializer=federated__pb2.StatusRequest.SerializeToString,
+                response_deserializer=federated__pb2.StatusResponse.FromString,
+                _registered_method=True)
+        self.RemoveClient = channel.unary_unary(
+                '/federated.FederatedLearningService/RemoveClient',
+                request_serializer=federated__pb2.RemoveClientRequest.SerializeToString,
+                response_deserializer=federated__pb2.RemoveClientResponse.FromString,
+                _registered_method=True)
 
 
 class FederatedLearningServiceServicer:
-    """=========================================================
-    SERVICE PRINCIPAL : ce que le serveur expose aux clients
-    (RPC - Remote Procedure Call, chapitre 4)
-    =========================================================
-    """
+    """Missing associated documentation comment in .proto file."""
 
     def RegisterClient(self, request, context):
-        """Un client s'enregistre auprès du serveur (lui obtient un nom plat + adresse)
-        """
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GetGlobalModel(self, request, context):
-        """Le serveur envoie le modèle global courant à un client
-        """
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def SendLocalUpdate(self, request, context):
-        """Le client envoie ses poids locaux entraînés (mise à jour FedAvg)
-        """
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Heartbeat(self, request, context):
-        """Heartbeat : pour la tolérance aux pannes (détection de panne via timeout)
-        """
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def ElectionMessage(self, request, context):
-        """Élection de leader (Bully) : un client annonce sa candidature
-        """
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def StartRound(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetStatus(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RemoveClient(self, request, context):
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -135,6 +155,21 @@ def add_FederatedLearningServiceServicer_to_server(servicer, server):
                     request_deserializer=federated__pb2.ElectionRequest.FromString,
                     response_serializer=federated__pb2.ElectionResponse.SerializeToString,
             ),
+            'StartRound': grpc.unary_unary_rpc_method_handler(
+                    servicer.StartRound,
+                    request_deserializer=federated__pb2.StartRoundRequest.FromString,
+                    response_serializer=federated__pb2.StartRoundResponse.SerializeToString,
+            ),
+            'GetStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetStatus,
+                    request_deserializer=federated__pb2.StatusRequest.FromString,
+                    response_serializer=federated__pb2.StatusResponse.SerializeToString,
+            ),
+            'RemoveClient': grpc.unary_unary_rpc_method_handler(
+                    servicer.RemoveClient,
+                    request_deserializer=federated__pb2.RemoveClientRequest.FromString,
+                    response_serializer=federated__pb2.RemoveClientResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'federated.FederatedLearningService', rpc_method_handlers)
@@ -144,11 +179,7 @@ def add_FederatedLearningServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class FederatedLearningService:
-    """=========================================================
-    SERVICE PRINCIPAL : ce que le serveur expose aux clients
-    (RPC - Remote Procedure Call, chapitre 4)
-    =========================================================
-    """
+    """Missing associated documentation comment in .proto file."""
 
     @staticmethod
     def RegisterClient(request,
@@ -275,6 +306,87 @@ class FederatedLearningService:
             '/federated.FederatedLearningService/ElectionMessage',
             federated__pb2.ElectionRequest.SerializeToString,
             federated__pb2.ElectionResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def StartRound(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/federated.FederatedLearningService/StartRound',
+            federated__pb2.StartRoundRequest.SerializeToString,
+            federated__pb2.StartRoundResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetStatus(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/federated.FederatedLearningService/GetStatus',
+            federated__pb2.StatusRequest.SerializeToString,
+            federated__pb2.StatusResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RemoveClient(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/federated.FederatedLearningService/RemoveClient',
+            federated__pb2.RemoveClientRequest.SerializeToString,
+            federated__pb2.RemoveClientResponse.FromString,
             options,
             channel_credentials,
             insecure,

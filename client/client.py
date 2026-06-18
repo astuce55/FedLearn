@@ -1,6 +1,8 @@
 """
-client.py — Version réseau réel.
-Heartbeat, Bully, devient serveur si élu, logs clairs.
+client.py — Client FL réseau réel.
+- Utilise GetStatus pour détecter quand un round démarre (pas de polling GetGlobalModel)
+- Reste allumé indéfiniment après l'entraînement
+- Bully + reconnexion automatique si le serveur tombe
 """
 import grpc, logging, socket, sys, os, time, random, threading
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -11,29 +13,26 @@ from common.bully import GestionnaireElection, TIMEOUT_HEARTBEAT, INTERVALLE_HB
 from common.checkpoint import charger
 
 PORT_LEADER_SECOURS = 50052
+POLL_STATUS         = 2.0    # secondes entre chaque GetStatus
+
 
 def get_ip_locale():
-    """Retourne l'IP locale sur le réseau (pas 127.0.0.1)."""
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
+        s.connect(("8.8.8.8", 80)); ip = s.getsockname()[0]; s.close()
         return ip
     except Exception:
         return "127.0.0.1"
 
 
 def configurer_logs(nom):
-    """Configure des logs bien lisibles avec le nom du processus."""
-    fmt = f"[{nom}] %(asctime)s %(levelname)s — %(message)s"
     logging.basicConfig(
         level=logging.INFO,
-        format=fmt,
+        format=f"[{nom}] %(asctime)s %(levelname)s — %(message)s",
         datefmt="%H:%M:%S",
-        handlers=[logging.StreamHandler(sys.stdout)]
+        handlers=[logging.StreamHandler(sys.stdout)],
+        force=True,
     )
-    # Réduire le bruit de gRPC
     logging.getLogger("grpc").setLevel(logging.WARNING)
     return logging.getLogger(nom)
 
@@ -43,56 +42,53 @@ class FederatedClient:
     def __init__(self, adresse_serveur, nom, dataset_size,
                  region, cpu_threads=2, ram_fraction=0.5, mon_id=None):
 
-        self.log = configurer_logs(nom)
-        self.nom = nom
+        self.log          = configurer_logs(nom)
+        self.nom          = nom
         self.dataset_size = dataset_size
-        self.region = region
-        self.cpu_threads = cpu_threads
+        self.region       = region
+        self.cpu_threads  = cpu_threads
         self.ram_fraction = ram_fraction
-        self.adresse_serveur = adresse_serveur
-        self.mon_ip = get_ip_locale()
+        self.mon_ip       = get_ip_locale()
+        self.mon_id       = mon_id if mon_id is not None else random.randint(100, 9999)
 
-        # ID Bully : plus grand = prioritaire pour l'élection
-        self.mon_id = mon_id if mon_id is not None else random.randint(1, 999)
-
-        self.client_id = None
+        self.client_id       = None
         self.structured_name = None
-        self.horloge = HorlogeLamport(nom)
+        self.horloge         = HorlogeLamport(nom)
 
-        # Connexion initiale au serveur
-        self._connecter(adresse_serveur)
+        # État
+        self._actif          = True
+        self._je_suis_leader = False
+        self._dernier_hb_ok  = time.time()
+        self._hb_thread      = None
+        self._srv_secours    = None
 
-        # Bully : gestionnaire d'élection
+        # Bully
         self.bully = GestionnaireElection(
             mon_id=self.mon_id,
-            mon_nom=self.nom,
+            mon_nom=nom,
             mon_ip=self.mon_ip,
             mon_port_serveur=PORT_LEADER_SECOURS,
             callback_je_suis_leader=self._devenir_leader,
             callback_nouveau_leader=self._nouveau_leader_elu,
         )
 
-        self._je_suis_leader   = False
-        self._serveur_secours  = None
-        self._dernier_hb_ok    = time.time()
-
+        self._connecter(adresse_serveur)
         self.log.info("Initialisé | IP=%s | bully_id=%d | cpu=%d | ram=%.0f%%",
                       self.mon_ip, self.mon_id, cpu_threads, ram_fraction * 100)
 
     # ── Connexion ─────────────────────────────────────────────
 
     def _connecter(self, adresse):
-        self.adresse_serveur = adresse
+        self._adresse = adresse
         self.canal = grpc.insecure_channel(adresse)
         self.stub  = federated_pb2_grpc.FederatedLearningServiceStub(self.canal)
-        self.log.info("Canal gRPC ouvert → %s", adresse)
+        self.log.info("Canal gRPC → %s", adresse)
 
     # ── Enregistrement ────────────────────────────────────────
 
     def rejoindre_reseau(self):
-        self.log.info("Envoi RegisterClient au serveur %s...", self.adresse_serveur)
+        self.log.info("Connexion à %s...", self._adresse)
         lc = self.horloge.avant_envoi()
-
         req = federated_pb2.RegisterRequest(
             client_name=self.nom,
             ip_address=self.mon_ip,
@@ -107,37 +103,34 @@ class FederatedClient:
             },
             lamport_timestamp=lc,
         )
-
         try:
             rep = self.stub.RegisterClient(req, timeout=10)
         except grpc.RpcError as e:
-            self.log.error("Impossible de joindre le serveur %s : %s",
-                           self.adresse_serveur, e.details())
+            self.log.error("Impossible de joindre %s : %s", self._adresse, e.details())
             sys.exit(1)
 
         self.horloge.apres_reception(rep.lamport_timestamp)
-        self.client_id = rep.assigned_id
+        self.client_id       = rep.assigned_id
         self.structured_name = rep.structured_name
 
-        self.log.info("✅ Enregistré avec succès !")
-        self.log.info("   ID plat       : %s", self.client_id)
-        self.log.info("   Nom structuré : %s", self.structured_name)
-        self.log.info("   Horloge LC    : %d", self.horloge.valeur)
-
-        # Démarrer la surveillance heartbeat
-        self._demarrer_heartbeat()
-        return rep
+        self.log.info("✅ Enregistré !")
+        self.log.info("   ID       : %s", self.client_id)
+        self.log.info("   Chemin   : %s", self.structured_name)
+        self.log.info("   LC       : %d", self.horloge.valeur)
+        self.log.info("⏳ En attente du lancement d'un round par le serveur...")
 
     # ── Heartbeat ─────────────────────────────────────────────
 
-    def _demarrer_heartbeat(self):
-        t = threading.Thread(target=self._boucle_heartbeat, daemon=True)
-        t.start()
-        self.log.info("Heartbeat démarré (toutes les %.0fs, timeout=%.0fs)",
-                      INTERVALLE_HB, TIMEOUT_HEARTBEAT)
+    def demarrer_heartbeat(self):
+        if self._hb_thread and self._hb_thread.is_alive():
+            return
+        self._dernier_hb_ok = time.time()
+        self._hb_thread = threading.Thread(
+            target=self._boucle_heartbeat, daemon=True, name="heartbeat")
+        self._hb_thread.start()
 
     def _boucle_heartbeat(self):
-        while not self._je_suis_leader:
+        while self._actif and not self._je_suis_leader:
             time.sleep(INTERVALLE_HB)
             try:
                 lc = self.horloge.avant_envoi()
@@ -148,171 +141,247 @@ class FederatedClient:
                     ),
                     timeout=3,
                 )
-                if rep.alive:
-                    self.horloge.apres_reception(rep.lamport_timestamp)
-                    self._dernier_hb_ok = time.time()
-                    self.bully.signaler_hb_ok(0)
+                self.horloge.apres_reception(rep.lamport_timestamp)
+                self._dernier_hb_ok = time.time()
+                self.bully.signaler_hb_ok(0)
 
             except grpc.RpcError:
                 delai = time.time() - self._dernier_hb_ok
-                self.log.warning("⚠ Heartbeat échoué (serveur muet depuis %.1fs)", delai)
-
                 if delai >= TIMEOUT_HEARTBEAT:
-                    self.log.error("❌ Serveur considéré MORT (timeout=%.0fs) !", TIMEOUT_HEARTBEAT)
-                    self.log.info("🗳  Lancement de l'élection Bully...")
+                    self.log.error(
+                        "❌ Serveur mort (silence %.0fs) → élection Bully", delai)
                     self.bully.signaler_hb_timeout()
-                    break
+                    return
 
-    # ── Callbacks Bully ───────────────────────────────────────
+    # ── GetStatus : détecte si un round est actif ─────────────
 
-    def _devenir_leader(self):
-        """Je gagne l'élection → je démarre un serveur gRPC sur ma machine."""
-        self._je_suis_leader = True
-
-        self.log.info("")
-        self.log.info("╔══════════════════════════════════════╗")
-        self.log.info("║  🏆 ÉLUUU LEADER — Démarrage serveur ║")
-        self.log.info("╚══════════════════════════════════════╝")
-
-        # Charger l'état depuis le checkpoint
-        etat = charger()
-        if etat:
-            self.log.info("📂 Checkpoint chargé (round=%d, poids=%s)",
-                          etat["round"], [round(p,4) for p in etat["poids_globaux"]])
-        else:
-            self.log.warning("Pas de checkpoint — reprise à zéro")
-
-        # Démarrer le serveur de secours
-        from server.server import FederatedServer
-        from concurrent.futures import ThreadPoolExecutor
-
-        srv_instance = FederatedServer(reprendre_depuis_checkpoint=True)
-        self._serveur_secours = grpc.server(ThreadPoolExecutor(max_workers=10))
-        federated_pb2_grpc.add_FederatedLearningServiceServicer_to_server(
-            srv_instance, self._serveur_secours)
-        self._serveur_secours.add_insecure_port(f"0.0.0.0:{PORT_LEADER_SECOURS}")
-        self._serveur_secours.start()
-
-        adresse = f"{self.mon_ip}:{PORT_LEADER_SECOURS}"
-        self.log.info("✅ Serveur de secours démarré sur %s", adresse)
-        self.log.info("📢 Les autres clients doivent se reconnecter à : %s", adresse)
-
-    def _nouveau_leader_elu(self, leader_id, leader_nom, leader_adresse):
-        """Un autre client a gagné → je me reconnecte à lui."""
-        self.log.info("")
-        self.log.info("🔄 Nouveau leader : %s (id=%d) @ %s", leader_nom, leader_id, leader_adresse)
-        self.log.info("🔌 Reconnexion au nouveau leader...")
-
-        time.sleep(2)   # laisser le nouveau leader démarrer son serveur
-        self._connecter(leader_adresse)
-
-        # Se ré-enregistrer auprès du nouveau leader
+    def _get_status(self):
+        """
+        Interroge le serveur via GetStatus.
+        Retourne StatusResponse ou None si erreur réseau.
+        """
         try:
-            self.rejoindre_reseau()
-            self.log.info("✅ Reconnecté au nouveau leader !")
-        except Exception as e:
-            self.log.error("Échec reconnexion : %s", e)
+            rep = self.stub.GetStatus(
+                federated_pb2.StatusRequest(), timeout=5)
+            return rep
+        except grpc.RpcError:
+            return None
 
     # ── FL ────────────────────────────────────────────────────
 
     def get_modele_global(self):
         lc = self.horloge.avant_envoi()
         rep = self.stub.GetGlobalModel(
-            federated_pb2.ModelRequest(client_id=self.client_id, lamport_timestamp=lc),
-            timeout=10,
-        )
-        self.horloge.apres_reception(rep.lamport_timestamp)
-        self.log.info("Modèle global reçu | round=%d | w=%.4f b=%.4f | LC=%d",
-                      rep.round_number, rep.weights[0], rep.weights[1], self.horloge.valeur)
-        return list(rep.weights)
-
-    def envoyer_mise_a_jour(self, poids, round_num):
-        lc = self.horloge.avant_envoi()
-        self.log.info("Envoi update | round=%d | w=%.4f b=%.4f | LC=%d",
-                      round_num, poids[0], poids[1], lc)
-        rep = self.stub.SendLocalUpdate(
-            federated_pb2.LocalUpdate(
-                client_id=self.client_id, weights=poids,
-                dataset_size=self.dataset_size,
-                round_number=round_num,
+            federated_pb2.ModelRequest(
+                client_id=self.client_id,
                 lamport_timestamp=lc,
             ),
             timeout=10,
         )
         self.horloge.apres_reception(rep.lamport_timestamp)
-        self.log.info("ACK reçu | LC=%d", self.horloge.valeur)
-        return rep
+        return list(rep.weights), rep.round_number
 
+    def envoyer_mise_a_jour(self, poids, round_num):
+        lc = self.horloge.avant_envoi()
+        self.log.info("📤 Envoi update | round=%d | w=%.4f b=%.4f | LC=%d",
+                      round_num, poids[0], poids[1], lc)
+        try:
+            rep = self.stub.SendLocalUpdate(
+                federated_pb2.LocalUpdate(
+                    client_id=self.client_id,
+                    weights=poids,
+                    dataset_size=self.dataset_size,
+                    round_number=round_num,
+                    lamport_timestamp=lc,
+                ),
+                timeout=15,
+            )
+            self.horloge.apres_reception(rep.lamport_timestamp)
+            if rep.received:
+                self.log.info("✅ Update acceptée | LC=%d", self.horloge.valeur)
+            else:
+                self.log.warning("⚠ Update refusée par le serveur (round terminé ou mauvais round)")
+            return rep
+        except grpc.RpcError as e:
+            self.log.error("Erreur envoi update : %s", e.details())
+            return None
+
+    # ── Boucle principale ─────────────────────────────────────
+
+    def boucle_fl(self, donnees):
+        """
+        Boucle principale du client.
+        Attend que le serveur signale round_en_cours=True via GetStatus.
+        S'entraîne, envoie, puis attend le round suivant.
+        Client ne s'arrête JAMAIS seul (Ctrl+C pour quitter).
+        """
+        from client.modele_local import entrainer_local
+
+        self.log.info("Boucle FL active. En attente des rounds du serveur...")
+
+        dernier_round_traite = -1
+
+        while self._actif:
+
+            # Ne rien faire si on est le leader (on gère le serveur)
+            if self._je_suis_leader:
+                time.sleep(5)
+                continue
+
+            # Interroger le statut du serveur
+            status = self._get_status()
+
+            if status is None:
+                # Erreur réseau → le heartbeat gère la détection de panne
+                time.sleep(POLL_STATUS)
+                continue
+
+            # Pas de round en cours → attendre
+            if not status.round_en_cours:
+                time.sleep(POLL_STATUS)
+                continue
+
+            round_num = status.round_actuel
+
+            # Round déjà traité → attendre le suivant
+            if round_num == dernier_round_traite:
+                time.sleep(POLL_STATUS)
+                continue
+
+            # ── Nouveau round détecté ! ──
+            self.log.info("")
+            self.log.info("🔔 Round %d démarré sur le serveur !", round_num)
+
+            # Récupérer le modèle global
+            try:
+                poids_globaux, _ = self.get_modele_global()
+            except grpc.RpcError as e:
+                self.log.error("Erreur GetGlobalModel : %s", e.details())
+                time.sleep(POLL_STATUS)
+                continue
+
+            self.log.info("   Poids reçus : w=%.4f b=%.4f", poids_globaux[0], poids_globaux[1])
+
+            # Entraînement local
+            self.log.info("🏋 Entraînement local...")
+            nouveaux_poids, perte = entrainer_local(poids_globaux, donnees)
+            self.log.info("   Résultat    : w=%.4f b=%.4f | perte=%.4f",
+                          nouveaux_poids[0], nouveaux_poids[1], perte)
+
+            # Envoi
+            rep = self.envoyer_mise_a_jour(nouveaux_poids, round_num)
+            if rep and rep.received:
+                dernier_round_traite = round_num
+                self.log.info("⏳ Round %d traité. En attente du prochain round...", round_num)
+            else:
+                self.log.warning("Update non confirmée — on réessaie au prochain cycle")
+
+            time.sleep(1)
+
+    # ── Callbacks Bully ───────────────────────────────────────
+
+    def _devenir_leader(self):
+        self._je_suis_leader = True
+        self.log.info("")
+        self.log.info("╔══════════════════════════════════════════╗")
+        self.log.info("║  🏆 ÉLUUU LEADER — Démarrage du serveur  ║")
+        self.log.info("╚══════════════════════════════════════════╝")
+
+        etat = charger()
+        if etat:
+            self.log.info("📂 Checkpoint : round=%d | w=%.4f b=%.4f",
+                          etat["round"],
+                          etat["poids_globaux"][0], etat["poids_globaux"][1])
+        else:
+            self.log.warning("Aucun checkpoint — reprise à zéro")
+
+        try:
+            from server.server import FederatedServer, menu_serveur
+            from concurrent.futures import ThreadPoolExecutor
+
+            srv_instance = FederatedServer(nb_clients_par_round=2, reprendre=True)
+            self._srv_secours_instance = srv_instance
+
+            self._srv_secours = grpc.server(ThreadPoolExecutor(max_workers=10))
+            federated_pb2_grpc.add_FederatedLearningServiceServicer_to_server(
+                srv_instance, self._srv_secours)
+            self._srv_secours.add_insecure_port(f"0.0.0.0:{PORT_LEADER_SECOURS}")
+            self._srv_secours.start()
+
+            adresse = f"{self.mon_ip}:{PORT_LEADER_SECOURS}"
+            self.log.info("✅ Serveur de secours démarré sur %s", adresse)
+            self.log.info("📢 Les autres clients vont se reconnecter à : %s", adresse)
+
+            # Menu dans un thread séparé pour ne pas bloquer
+            threading.Thread(
+                target=menu_serveur,
+                args=(srv_instance,),
+                daemon=False,
+                name="menu-leader"
+            ).start()
+
+        except Exception as e:
+            self.log.error("Erreur démarrage serveur de secours : %s", e)
+            import traceback; traceback.print_exc()
+
+    def _nouveau_leader_elu(self, leader_id, leader_nom, leader_adresse):
+        self.log.info("")
+        self.log.info("🔄 Nouveau leader : %s (id=%d) @ %s",
+                      leader_nom, leader_id, leader_adresse)
+        self.log.info("⏳ Attente démarrage du nouveau serveur (3s)...")
+        time.sleep(3)
+
+        self._connecter(leader_adresse)
+        self._dernier_hb_ok = time.time()
+        self.client_id = None
+
+        try:
+            self.rejoindre_reseau()
+            self.demarrer_heartbeat()
+            self.log.info("✅ Reconnecté au nouveau leader !")
+        except Exception as e:
+            self.log.error("Échec reconnexion : %s", e)
+
+
+# ── Point d'entrée ────────────────────────────────────────────
 
 def menu_interactif(adresse_serveur=None):
-    """Menu pour les camarades — saisie de leurs paramètres."""
     print("\n" + "="*55)
-    print("   Système d'apprentissage fédéré distribué")
+    print("   Apprentissage Fédéré Distribué — Client")
     print("="*55)
-
     if not adresse_serveur:
-        adresse_serveur = input("\nAdresse du serveur (ex: 192.168.1.10:50051) : ").strip()
-        if not adresse_serveur:
-            adresse_serveur = "localhost:50051"
-
+        adresse_serveur = input(
+            "\nAdresse du serveur (ex: 192.168.1.10:50051) : ").strip() or "localhost:50051"
     nom          = input("Ton prénom/pseudo : ").strip() or "anonyme"
-    region       = input("Ta région (ex: yaounde) : ").strip() or "yaounde"
-    dataset_size = int(input("Taille dataset local [200] : ").strip() or "200")
-
-    print("\n-- Ressources allouées au calcul --")
-    cpu  = int(input("Threads CPU (1/2/4/8) [2] : ").strip() or "2")
-    ram  = float(input("Fraction RAM (0.1 à 1.0) [0.5] : ").strip() or "0.5")
-
+    region       = input("Région (ex: yaounde) : ").strip() or "yaounde"
+    dataset_size = int(input("Taille dataset [200] : ").strip() or "200")
+    print("\n-- Ressources --")
+    cpu  = int(input("Threads CPU [2] : ").strip() or "2")
+    ram  = float(input("Fraction RAM 0.1-1.0 [0.5] : ").strip() or "0.5")
     return adresse_serveur, nom, dataset_size, region, cpu, ram
 
 
 if __name__ == "__main__":
-    from client.modele_local import generer_donnees_locales, entrainer_local
+    from client.modele_local import generer_donnees_locales
 
-    # Adresse passée en argument ou saisie
     adresse = sys.argv[1] if len(sys.argv) > 1 else None
     adresse, nom, dataset_size, region, cpu, ram = menu_interactif(adresse)
 
     client = FederatedClient(
-        adresse_serveur=adresse,
-        nom=nom,
-        dataset_size=dataset_size,
-        region=region,
-        cpu_threads=cpu,
-        ram_fraction=ram,
+        adresse_serveur=adresse, nom=nom,
+        dataset_size=dataset_size, region=region,
+        cpu_threads=cpu, ram_fraction=ram,
     )
 
     client.rejoindre_reseau()
+    client.demarrer_heartbeat()
 
-    # Générer les données locales une fois
-    seed = random.randint(0, 999)
+    seed    = random.randint(0, 9999)
     donnees = generer_donnees_locales(dataset_size, seed=seed)
-    client.log.info("Données locales prêtes : %d exemples (seed=%d)", dataset_size, seed)
+    client.log.info("📊 Données locales : %d exemples (seed=%d)", dataset_size, seed)
 
-    # Boucle FL — continue jusqu'à Ctrl+C
-    round_num = 1
-    client.log.info("Démarrage de la boucle FL. Ctrl+C pour arrêter.")
     try:
-        while True:
-            # Attendre si on est en élection
-            if client.bully._en_election:
-                client.log.info("Élection en cours, pause...")
-                time.sleep(2)
-                continue
-
-            try:
-                client.log.info("─── Round %d ───", round_num)
-                poids = client.get_modele_global()
-                nouveaux, perte = entrainer_local(poids, donnees)
-                client.log.info("Entraînement local | perte=%.4f | w=%.4f b=%.4f",
-                                perte, nouveaux[0], nouveaux[1])
-                client.envoyer_mise_a_jour(nouveaux, round_num)
-                round_num += 1
-                time.sleep(1)
-
-            except grpc.RpcError as e:
-                client.log.warning("Erreur gRPC : %s — attente reconnexion...", e.details())
-                time.sleep(3)
-
+        client.boucle_fl(donnees)
     except KeyboardInterrupt:
-        client.log.info("Arrêt du client.")
+        client._actif = False
+        client.log.info("Arrêt.")
