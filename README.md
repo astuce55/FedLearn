@@ -163,6 +163,9 @@ directement dans un navigateur web.
 
 ## Auteurs
 
+WATO MABOU PAUL
+HEUKOU TCHIKAMEN NOEL
+
 Projet réalisé dans le cadre du cours **INF4218 — Programmation Distribuée**  
 Master 1 Informatique — Systèmes et Réseaux  
 Université de Yaoundé I
