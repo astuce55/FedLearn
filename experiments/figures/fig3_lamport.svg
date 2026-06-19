@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="380" viewBox="0 0 680 380">
+<rect width="680" height="380" fill="white"/>
+<style>
+  text { font-family: system-ui, sans-serif; }
+</style>
+<text x="340" y="25" text-anchor="middle" font-size="14" font-weight="bold" fill="#111827">Horloges logiques de Lamport — Ordre causal</text>
+<line x1="80.0" y1="50" x2="80.0" y2="300" stroke="#E5E7EB" stroke-width="1" stroke-dasharray="4 2"/>
+<text x="80.0" y="40" text-anchor="middle" font-size="12" font-weight="500" fill="#374151">C1</text>
+<line x1="350.0" y1="50" x2="350.0" y2="300" stroke="#E5E7EB" stroke-width="1" stroke-dasharray="4 2"/>
+<text x="350.0" y="40" text-anchor="middle" font-size="12" font-weight="500" fill="#374151">C2</text>
+<line x1="620.0" y1="50" x2="620.0" y2="300" stroke="#E5E7EB" stroke-width="1" stroke-dasharray="4 2"/>
+<text x="620.0" y="40" text-anchor="middle" font-size="12" font-weight="500" fill="#374151">C3</text>
+<line x1="75" y1="300.0" x2="620" y2="300.0" stroke="#F3F4F6" stroke-width="0.5"/>
+<text x="72" y="300.0" text-anchor="end" font-size="9" fill="#9CA3AF" dominant-baseline="middle">LC=0</text>
+<line x1="75" y1="260.7" x2="620" y2="260.7" stroke="#F3F4F6" stroke-width="0.5"/>
+<text x="72" y="260.7" text-anchor="end" font-size="9" fill="#9CA3AF" dominant-baseline="middle">LC=11</text>
+<line x1="75" y1="221.4" x2="620" y2="221.4" stroke="#F3F4F6" stroke-width="0.5"/>
+<text x="72" y="221.4" text-anchor="end" font-size="9" fill="#9CA3AF" dominant-baseline="middle">LC=22</text>
+<line x1="75" y1="182.1" x2="620" y2="182.1" stroke="#F3F4F6" stroke-width="0.5"/>
+<text x="72" y="182.1" text-anchor="end" font-size="9" fill="#9CA3AF" dominant-baseline="middle">LC=33</text>
+<line x1="75" y1="142.9" x2="620" y2="142.9" stroke="#F3F4F6" stroke-width="0.5"/>
+<text x="72" y="142.9" text-anchor="end" font-size="9" fill="#9CA3AF" dominant-baseline="middle">LC=44</text>
+<line x1="75" y1="103.6" x2="620" y2="103.6" stroke="#F3F4F6" stroke-width="0.5"/>
+<text x="72" y="103.6" text-anchor="end" font-size="9" fill="#9CA3AF" dominant-baseline="middle">LC=55</text>
+<line x1="75" y1="64.3" x2="620" y2="64.3" stroke="#F3F4F6" stroke-width="0.5"/>
+<text x="72" y="64.3" text-anchor="end" font-size="9" fill="#9CA3AF" dominant-baseline="middle">LC=66</text>
+<line x1="80.0" y1="285.7" x2="80.0" y2="264.3" stroke="#378ADD" stroke-width="1.5"/>
+<circle cx="80.0" cy="264.3" r="5" fill="#378ADD" stroke="white" stroke-width="1.5"/>
+<text x="89.0" y="264.3" font-size="9" fill="#378ADD" dominant-baseline="middle">10</text>
+<line x1="350.0" y1="278.6" x2="350.0" y2="257.1" stroke="#1D9E75" stroke-width="1.5"/>
+<circle cx="350.0" cy="257.1" r="5" fill="#1D9E75" stroke="white" stroke-width="1.5"/>
+<text x="359.0" y="257.1" font-size="9" fill="#1D9E75" dominant-baseline="middle">12</text>
+<line x1="620.0" y1="271.4" x2="620.0" y2="250.0" stroke="#D85A30" stroke-width="1.5"/>
+<circle cx="620.0" cy="250.0" r="5" fill="#D85A30" stroke="white" stroke-width="1.5"/>
+<text x="629.0" y="250.0" font-size="9" fill="#D85A30" dominant-baseline="middle">14</text>
+<line x1="80.0" y1="264.3" x2="80.0" y2="242.9" stroke="#378ADD" stroke-width="1.5"/>
+<circle cx="80.0" cy="242.9" r="5" fill="#378ADD" stroke="white" stroke-width="1.5"/>
+<text x="89.0" y="242.9" font-size="9" fill="#378ADD" dominant-baseline="middle">16</text>
+<line x1="350.0" y1="257.1" x2="350.0" y2="235.7" stroke="#1D9E75" stroke-width="1.5"/>
+<circle cx="350.0" cy="235.7" r="5" fill="#1D9E75" stroke="white" stroke-width="1.5"/>
+<text x="359.0" y="235.7" font-size="9" fill="#1D9E75" dominant-baseline="middle">18</text>
+<line x1="620.0" y1="250.0" x2="620.0" y2="228.6" stroke="#D85A30" stroke-width="1.5"/>
+<circle cx="620.0" cy="228.6" r="5" fill="#D85A30" stroke="white" stroke-width="1.5"/>
+<text x="629.0" y="228.6" font-size="9" fill="#D85A30" dominant-baseline="middle">20</text>
+<line x1="80.0" y1="242.9" x2="80.0" y2="221.4" stroke="#378ADD" stroke-width="1.5"/>
+<circle cx="80.0" cy="221.4" r="5" fill="#378ADD" stroke="white" stroke-width="1.5"/>
+<text x="89.0" y="221.4" font-size="9" fill="#378ADD" dominant-baseline="middle">22</text>
+<line x1="350.0" y1="235.7" x2="350.0" y2="214.3" stroke="#1D9E75" stroke-width="1.5"/>
+<circle cx="350.0" cy="214.3" r="5" fill="#1D9E75" stroke="white" stroke-width="1.5"/>
+<text x="359.0" y="214.3" font-size="9" fill="#1D9E75" dominant-baseline="middle">24</text>
+<line x1="620.0" y1="228.6" x2="620.0" y2="207.1" stroke="#D85A30" stroke-width="1.5"/>
+<circle cx="620.0" cy="207.1" r="5" fill="#D85A30" stroke="white" stroke-width="1.5"/>
+<text x="629.0" y="207.1" font-size="9" fill="#D85A30" dominant-baseline="middle">26</text>
+<line x1="80.0" y1="221.4" x2="80.0" y2="200.0" stroke="#378ADD" stroke-width="1.5"/>
+<circle cx="80.0" cy="200.0" r="5" fill="#378ADD" stroke="white" stroke-width="1.5"/>
+<text x="89.0" y="200.0" font-size="9" fill="#378ADD" dominant-baseline="middle">28</text>
+<line x1="350.0" y1="214.3" x2="350.0" y2="192.9" stroke="#1D9E75" stroke-width="1.5"/>
+<circle cx="350.0" cy="192.9" r="5" fill="#1D9E75" stroke="white" stroke-width="1.5"/>
+<text x="359.0" y="192.9" font-size="9" fill="#1D9E75" dominant-baseline="middle">30</text>
+<line x1="620.0" y1="207.1" x2="620.0" y2="185.7" stroke="#D85A30" stroke-width="1.5"/>
+<circle cx="620.0" cy="185.7" r="5" fill="#D85A30" stroke="white" stroke-width="1.5"/>
+<text x="629.0" y="185.7" font-size="9" fill="#D85A30" dominant-baseline="middle">32</text>
+<line x1="80.0" y1="200.0" x2="80.0" y2="178.6" stroke="#378ADD" stroke-width="1.5"/>
+<circle cx="80.0" cy="178.6" r="5" fill="#378ADD" stroke="white" stroke-width="1.5"/>
+<text x="89.0" y="178.6" font-size="9" fill="#378ADD" dominant-baseline="middle">34</text>
+<line x1="350.0" y1="192.9" x2="350.0" y2="171.4" stroke="#1D9E75" stroke-width="1.5"/>
+<circle cx="350.0" cy="171.4" r="5" fill="#1D9E75" stroke="white" stroke-width="1.5"/>
+<text x="359.0" y="171.4" font-size="9" fill="#1D9E75" dominant-baseline="middle">36</text>
+<line x1="620.0" y1="185.7" x2="620.0" y2="164.3" stroke="#D85A30" stroke-width="1.5"/>
+<circle cx="620.0" cy="164.3" r="5" fill="#D85A30" stroke="white" stroke-width="1.5"/>
+<text x="629.0" y="164.3" font-size="9" fill="#D85A30" dominant-baseline="middle">38</text>
+<line x1="80.0" y1="178.6" x2="80.0" y2="157.1" stroke="#378ADD" stroke-width="1.5"/>
+<circle cx="80.0" cy="157.1" r="5" fill="#378ADD" stroke="white" stroke-width="1.5"/>
+<text x="89.0" y="157.1" font-size="9" fill="#378ADD" dominant-baseline="middle">40</text>
+<line x1="350.0" y1="171.4" x2="350.0" y2="150.0" stroke="#1D9E75" stroke-width="1.5"/>
+<circle cx="350.0" cy="150.0" r="5" fill="#1D9E75" stroke="white" stroke-width="1.5"/>
+<text x="359.0" y="150.0" font-size="9" fill="#1D9E75" dominant-baseline="middle">42</text>
+<line x1="620.0" y1="164.3" x2="620.0" y2="142.9" stroke="#D85A30" stroke-width="1.5"/>
+<circle cx="620.0" cy="142.9" r="5" fill="#D85A30" stroke="white" stroke-width="1.5"/>
+<text x="629.0" y="142.9" font-size="9" fill="#D85A30" dominant-baseline="middle">44</text>
+<line x1="80.0" y1="157.1" x2="80.0" y2="135.7" stroke="#378ADD" stroke-width="1.5"/>
+<circle cx="80.0" cy="135.7" r="5" fill="#378ADD" stroke="white" stroke-width="1.5"/>
+<text x="89.0" y="135.7" font-size="9" fill="#378ADD" dominant-baseline="middle">46</text>
+<line x1="350.0" y1="150.0" x2="350.0" y2="128.6" stroke="#1D9E75" stroke-width="1.5"/>
+<circle cx="350.0" cy="128.6" r="5" fill="#1D9E75" stroke="white" stroke-width="1.5"/>
+<text x="359.0" y="128.6" font-size="9" fill="#1D9E75" dominant-baseline="middle">48</text>
+<line x1="620.0" y1="142.9" x2="620.0" y2="121.4" stroke="#D85A30" stroke-width="1.5"/>
+<circle cx="620.0" cy="121.4" r="5" fill="#D85A30" stroke="white" stroke-width="1.5"/>
+<text x="629.0" y="121.4" font-size="9" fill="#D85A30" dominant-baseline="middle">50</text>
+<line x1="80.0" y1="135.7" x2="80.0" y2="114.3" stroke="#378ADD" stroke-width="1.5"/>
+<circle cx="80.0" cy="114.3" r="5" fill="#378ADD" stroke="white" stroke-width="1.5"/>
+<text x="89.0" y="114.3" font-size="9" fill="#378ADD" dominant-baseline="middle">52</text>
+<line x1="350.0" y1="128.6" x2="350.0" y2="107.1" stroke="#1D9E75" stroke-width="1.5"/>
+<circle cx="350.0" cy="107.1" r="5" fill="#1D9E75" stroke="white" stroke-width="1.5"/>
+<text x="359.0" y="107.1" font-size="9" fill="#1D9E75" dominant-baseline="middle">54</text>
+<line x1="620.0" y1="121.4" x2="620.0" y2="100.0" stroke="#D85A30" stroke-width="1.5"/>
+<circle cx="620.0" cy="100.0" r="5" fill="#D85A30" stroke="white" stroke-width="1.5"/>
+<text x="629.0" y="100.0" font-size="9" fill="#D85A30" dominant-baseline="middle">56</text>
+<line x1="80.0" y1="114.3" x2="80.0" y2="92.9" stroke="#378ADD" stroke-width="1.5"/>
+<circle cx="80.0" cy="92.9" r="5" fill="#378ADD" stroke="white" stroke-width="1.5"/>
+<text x="89.0" y="92.9" font-size="9" fill="#378ADD" dominant-baseline="middle">58</text>
+<line x1="350.0" y1="107.1" x2="350.0" y2="85.7" stroke="#1D9E75" stroke-width="1.5"/>
+<circle cx="350.0" cy="85.7" r="5" fill="#1D9E75" stroke="white" stroke-width="1.5"/>
+<text x="359.0" y="85.7" font-size="9" fill="#1D9E75" dominant-baseline="middle">60</text>
+<line x1="620.0" y1="100.0" x2="620.0" y2="78.6" stroke="#D85A30" stroke-width="1.5"/>
+<circle cx="620.0" cy="78.6" r="5" fill="#D85A30" stroke="white" stroke-width="1.5"/>
+<text x="629.0" y="78.6" font-size="9" fill="#D85A30" dominant-baseline="middle">62</text>
+<line x1="80.0" y1="92.9" x2="80.0" y2="71.4" stroke="#378ADD" stroke-width="1.5"/>
+<circle cx="80.0" cy="71.4" r="5" fill="#378ADD" stroke="white" stroke-width="1.5"/>
+<text x="89.0" y="71.4" font-size="9" fill="#378ADD" dominant-baseline="middle">64</text>
+<line x1="350.0" y1="85.7" x2="350.0" y2="64.3" stroke="#1D9E75" stroke-width="1.5"/>
+<circle cx="350.0" cy="64.3" r="5" fill="#1D9E75" stroke="white" stroke-width="1.5"/>
+<text x="359.0" y="64.3" font-size="9" fill="#1D9E75" dominant-baseline="middle">66</text>
+<line x1="620.0" y1="78.6" x2="620.0" y2="57.1" stroke="#D85A30" stroke-width="1.5"/>
+<circle cx="620.0" cy="57.1" r="5" fill="#D85A30" stroke="white" stroke-width="1.5"/>
+<text x="629.0" y="57.1" font-size="9" fill="#D85A30" dominant-baseline="middle">68</text>
+<line x1="80" y1="50" x2="80" y2="300" stroke="#9CA3AF" stroke-width="1"/>
+<line x1="80" y1="300" x2="620" y2="300" stroke="#9CA3AF" stroke-width="1"/>
+<text x="340" y="360" text-anchor="middle" font-size="11" fill="#1D9E75">✓ 30/30 événements respectent l'ordre causal LC(avant) &lt; LC(après)</text>
+<text x="340" y="375" text-anchor="middle" font-size="10" fill="#6B7280">● GetGlobalModel  ■ SendLocalUpdate</text>
+</svg>

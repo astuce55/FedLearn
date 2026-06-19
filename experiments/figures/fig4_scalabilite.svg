@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="540" height="360" viewBox="0 0 540 360">
+<rect width="540" height="360" fill="white"/>
+<style>
+  text { font-family: system-ui, sans-serif; }
+</style>
+<text x="270" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#111827">Impact du nombre de clients sur la durée d'un round</text>
+<line x1="70" y1="40.0" x2="460" y2="40.0" stroke="#E5E7EB" stroke-width="0.5"/>
+<line x1="70" y1="97.5" x2="460" y2="97.5" stroke="#E5E7EB" stroke-width="0.5"/>
+<line x1="70" y1="155.0" x2="460" y2="155.0" stroke="#E5E7EB" stroke-width="0.5"/>
+<line x1="70" y1="212.5" x2="460" y2="212.5" stroke="#E5E7EB" stroke-width="0.5"/>
+<line x1="70" y1="270.0" x2="460" y2="270.0" stroke="#E5E7EB" stroke-width="0.5"/>
+<line x1="70.0" y1="40" x2="70.0" y2="270" stroke="#E5E7EB" stroke-width="0.5"/>
+<line x1="265.0" y1="40" x2="265.0" y2="270" stroke="#E5E7EB" stroke-width="0.5"/>
+<line x1="460.0" y1="40" x2="460.0" y2="270" stroke="#E5E7EB" stroke-width="0.5"/>
+<rect x="37.5" y="89.2" width="65.0" height="180.8" fill="#378ADD" opacity="0.8" rx="4"/>
+<line x1="70.0" y1="87.7" x2="70.0" y2="90.8" stroke="#374151" stroke-width="1.5"/>
+<line x1="64.0" y1="87.7" x2="76.0" y2="87.7" stroke="#374151" stroke-width="1.5"/>
+<line x1="64.0" y1="90.8" x2="76.0" y2="90.8" stroke="#374151" stroke-width="1.5"/>
+<text x="70.0" y="81.2" text-anchor="middle" font-size="11" fill="#378ADD" font-weight="bold">106ms</text>
+<text x="70.0" y="285" text-anchor="middle" font-size="11" fill="#374151">1 client</text>
+<rect x="232.5" y="85.0" width="65.0" height="185.0" fill="#1D9E75" opacity="0.8" rx="4"/>
+<line x1="265.0" y1="82.8" x2="265.0" y2="87.2" stroke="#374151" stroke-width="1.5"/>
+<line x1="259.0" y1="82.8" x2="271.0" y2="82.8" stroke="#374151" stroke-width="1.5"/>
+<line x1="259.0" y1="87.2" x2="271.0" y2="87.2" stroke="#374151" stroke-width="1.5"/>
+<text x="265.0" y="77.0" text-anchor="middle" font-size="11" fill="#1D9E75" font-weight="bold">109ms</text>
+<text x="265.0" y="285" text-anchor="middle" font-size="11" fill="#374151">2 clients</text>
+<rect x="427.5" y="78.3" width="65.0" height="191.7" fill="#D85A30" opacity="0.8" rx="4"/>
+<line x1="460.0" y1="75.6" x2="460.0" y2="81.1" stroke="#374151" stroke-width="1.5"/>
+<line x1="454.0" y1="75.6" x2="466.0" y2="75.6" stroke="#374151" stroke-width="1.5"/>
+<line x1="454.0" y1="81.1" x2="466.0" y2="81.1" stroke="#374151" stroke-width="1.5"/>
+<text x="460.0" y="70.3" text-anchor="middle" font-size="11" fill="#D85A30" font-weight="bold">113ms</text>
+<text x="460.0" y="285" text-anchor="middle" font-size="11" fill="#374151">3 clients</text>
+<line x1="70" y1="40" x2="70" y2="270" stroke="#9CA3AF" stroke-width="1"/>
+<line x1="70" y1="270" x2="460" y2="270" stroke="#9CA3AF" stroke-width="1"/>
+<text x="64" y="270.0" text-anchor="end" font-size="10" fill="#6B7280" dominant-baseline="middle">0.00</text>
+<text x="64" y="212.5" text-anchor="end" font-size="10" fill="#6B7280" dominant-baseline="middle">33.78</text>
+<text x="64" y="155.0" text-anchor="end" font-size="10" fill="#6B7280" dominant-baseline="middle">67.56</text>
+<text x="64" y="97.5" text-anchor="end" font-size="10" fill="#6B7280" dominant-baseline="middle">101.34</text>
+<text x="64" y="40.0" text-anchor="end" font-size="10" fill="#6B7280" dominant-baseline="middle">135.12</text>
+<text x="25" y="155" text-anchor="middle" font-size="11" fill="#374151" transform="rotate(-90,25,155)">Durée (ms)</text>
+<text x="270" y="352" text-anchor="middle" font-size="10" fill="#6B7280">Barre d'erreur = écart-type sur 5 rounds</text>
+</svg>
